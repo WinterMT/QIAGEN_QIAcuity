@@ -3,6 +3,7 @@
 ##        all rights reserved.
 ## 2022-04-13
 
+
 ##---- QIAcuity User Manual Extension document ----
 #  HB-2839-003_UM_QIAcuity_UM_Extension_0621_WW first section Nanoplate Digital
 #  PCR contains subsection Statistics of nanoplate dPCR on page 7. This R file
@@ -11,6 +12,7 @@
 #  function rm(list=ls()) to clear your environment prior to running this
 #  script. Be sure no valuable data is stored in your R environment first, maybe
 #  by running ls() and looking at the output, just to be safe.
+
 
 ##---- Poisson distribution ----
 #  The first portion of the manual describes the natural distribution of the
@@ -21,8 +23,8 @@
 #  is described and the following parameters are defined:
 # 
 #  e: Euler's constant, can be obtained with \code{exp(1)} in R
-#  Lambda: can be thought of as the average count of the target molecule in each
-#          well.
+#  Lambda: can be thought of as the concentration of the target molecule, or,
+#            the average count per microliter
 #  k: the copies of the molecule per partition
 #  k!: k factorial, obtained with \code{factorial(k)} in R
 #
@@ -49,7 +51,7 @@ options(OutDec=",")
 for(i in 1:5) {
   #  create a null plot
   barplot(col = NA, border = NA, axes = FALSE, dpois(x=0:10, myLambdas[i]),
-          ylim=c(0, 1), xlim=c(0, 10), main=bquote(lambda==.(myLambdas[i])))
+          ylim=c(0, 1), xlim=c(0, 10))
   #  add the horizontal lines first so they are below the bars
   segments(rep(0, 6), seq(0, 1, .2), rep(12, 6), seq(0, 1, .2), col="#cccccc")
   #  plot the Poisson distributions
@@ -83,6 +85,7 @@ options(OutDec=".") ## set the decimal back to a period
 #
 #  The following section describes how to calculate the copies of the molecule
 #  per partition.
+
 
 ##----  Absolute quantification - copies per partition ----
 #  this section of the manual describes how to calculate lambda, the average
@@ -129,13 +132,13 @@ validPartitions * thisLambda # 5545.177
 # 
 #  The writers of this manual have used a different form of the Poisson
 #  distribution to express the confidence interval than in the previous section.
-#  The Poisson distribution of Wikipedia paramatarizes the distribution this way
-#  for the confidence interval as well:
+#  As of this writing, the Poisson distribution entry for Wikipedia 
+#  parameterizes the distribution this way for the confidence interval as well:
 # 
-# (1/2)*chiSquare(alpha/2, 2*k) ≤ Mu ≤ (1/2)*chiSquare(1 - (alpha/2), 2*k + 2)
+#  (1/2)*chiSquare(alpha/2, 2*k) ≤ Mu ≤ (1/2)*chiSquare(1 - (alpha/2), 2*k + 2)
 #
 #  This expression relies on the relationship between the Poisson,
-#  Chi-square and Gamma distributions. In this application, it breaks down to,
+#  Chi-square, and Gamma distributions. In this application, it breaks down to,
 #  we expect the average number of copies per partition to be between our
 #  estimate of lambda (the average number of copies per partition) plus or minus
 #  our estimate of the amount of variability in lambda based on what we know
@@ -157,7 +160,7 @@ lambdaHigh.2 <- exampleLambda + ((1.96^2) / (2 * validPartitions)) +
          ((1.96^4) / (4 * validPartitions^2)))
 #  check that they are the same
 testLambdas <- c(lambdaLow == lambdaLow.2, lambdaHigh == lambdaHigh.2)
-all(testLambdas)
+all(testLambdas) # TRUE
 
 #  to make that more readable, break it into smaller parts and give names
 chiSquareFor95CI <- (1.96^2)
@@ -207,7 +210,7 @@ floor(exampleCopiesPerML) # 2038
 
 #  write this into a function for reusability
 computeVolume <- function(lambda, volume) {
-  return(floor((lambda/volume) * 1000))
+  return((lambda/volume) * 1000)
 }
 
 #  Next, the manual demonstrates how to calculate the copies of the target
@@ -221,8 +224,8 @@ computeVolume <- function(lambda, volume, inputReactionVolume=F) {
   #  if the user specified an inputReactionVolume, return it with the reaction
   #  volume
   if(inputReactionVolume) {
-    return(c(floor((lambda/volume) * 1000),
-             floor((lambda/volume) * 1000) * inputReactionVolume))
+    return(c((lambda/volume) * 1000,
+             (lambda/volume) * 1000) * inputReactionVolume)
   }
   #  if the user didn't specify an input volume, return just the reaction volume
   return(floor((lambda/volume) * 1000))
@@ -249,6 +252,7 @@ copiesPerML * sampleVolume # 24456
 percentCV <- ((lambdaHigh.4 - lambdaLow.4) / (2 * thisLambda)) * 100 # 2.632024
 #  we can format this as a percent and print it to the console as follows
 print(paste0("The confidence value is: ", round(percentCV, 2), "%"))
+
 
 #----  Concentration range ----
 ## The concentration range section reviews how to estimate the number of copies
@@ -279,6 +283,7 @@ print(round(table3))
 #  count, for 26,000 partitions
 table4 <- table2 * 26000
 print(round(table4))
+
 
 ##---- Conclusion ----
 ## This concludes our replication the QIAcuity User Manual Extension document.
