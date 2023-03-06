@@ -228,7 +228,7 @@ computeVolume <- function(lambda, volume, inputReactionVolume=F) {
              (lambda/volume) * 1000) * inputReactionVolume)
   }
   #  if the user didn't specify an input volume, return just the reaction volume
-  return(floor((lambda/volume) * 1000))
+  return((lambda/volume) * 1000)
 }
 computeVolume(thisLambda, V, inputReactionVolume) # 2038 24456
 
@@ -274,6 +274,9 @@ colnames(table2) <- paste(0:10)
 rownames(table2) <- paste(table2.lambdas)
 print(round(table2, 4) * 100)
 
+#  Note that this table does not match exactly. I suspect this is a rounding
+#  error in the manual, given that the subsequent tables match.
+
 #  Table 3. Expected number of partitions with different copies per partition
 #  count, for 8500 partitions
 table3 <- table2 * 8500
@@ -289,3 +292,7 @@ print(round(table4))
 ## This concludes our replication the QIAcuity User Manual Extension document.
 #  I hope that this has been informative, and I welcome feedback and questions
 #  at wthayer1@jh.edu
+
+##---- References ----
+#  QIAGEN (2021) QIAcuity: Nanoplate Digital PCR.
+#     HB-2839-003_UM_QIAcuity_UM_Extension_0621_WW.pdf. www.qiagen.com
