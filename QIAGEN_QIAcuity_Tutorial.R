@@ -191,6 +191,8 @@ computeLambdaCI <- function(lambda, valid) {
 exampleCIs <- computeLambdaCI(thisLambda, 8000)
 round(exampleCIs, 6) # LB: 0.675142, UB: 0.711633
 
+#  We can do better by, for example, replacing 1.96^2 with the appriate
+#  distribution function in R, but this will suffice for now.
 
 ##----  Absolute quantification - copies per ml ----
 #  The manual then provides the calculation for for the number of copies per
