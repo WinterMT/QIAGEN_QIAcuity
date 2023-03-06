@@ -42,6 +42,11 @@ myLambdas <- c(.1, .5, 1, 2, 5)
 # myColors <- c("medium blue", "light goldenrod", "tomato3", "grey40",
               # "light green")
 #  try for a closer approximate using rgb values obtained with a color picker
+myColors <- list(rgb(0.2, 0.349, 0.545),
+                 rgb(0.969, 0.69, 0),
+                 rgb(0.69, 0.251, 0.106),
+                 rgb(0.365, 0.345, 0.345),
+                 rgb(0.733, 0.851, 0.631))
 #  plot the each lambda using a for-loop, use the same barplot function call
 #  five times, each using myLambdas[i] and myColors[[i]]
 #  The manual uses commas rather than periods to indicate decimal points on
