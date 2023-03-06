@@ -1,9 +1,0 @@
-cff-version: 1.2.0
-message: "If you use this tutorial, please cite it as below."
-authors:
-  - family-names: Thayer
-given-names: Winter Maxwell
-orcid: https://orcid.org/
-title: "R tutorial"
-version: 0.0.9
-date-released: 2023-03-06
