@@ -123,7 +123,7 @@ exampleLambda == 0.693 # TRUE
 validPartitions * exampleLambda # 5544
 #  note that if we used the lambda prior to rounding we obtain
 validPartitions * thisLambda # 5545.177
-#  I suggest waiting to round until the final step.
+#  Wait to round until the final step.
 
 #  Next, the manual describes how to calculate the 95% confidence interval
 #  assuming the data are Poisson-distributed. Any calculation of a confidence
@@ -136,10 +136,11 @@ validPartitions * thisLambda # 5545.177
 #   lowerBound < estimate < upperBound
 # 
 #  The writers of this manual have used a different form of the Poisson
-#  distribution to express the confidence interval than in the previous section.
-#  As of this writing, the Poisson distribution entry for Wikipedia 
-#  parameterizes the distribution this way for the confidence interval as well:
-# 
+#  distribution to express the confidence interval than they used to express
+#  lambda in the previous section. As of this writing, the Poisson distribution
+#  entry for Wikipedia parameterizes the distribution this way for the
+#  confidence interval as well:
+#
 #  (1/2)*chiSquare(alpha/2, 2*k) ≤ Mu ≤ (1/2)*chiSquare(1 - (alpha/2), 2*k + 2)
 #
 #  This expression relies on the relationship between the Poisson,
@@ -195,9 +196,58 @@ computeLambdaCI <- function(lambda, valid) {
 }
 exampleCIs <- computeLambdaCI(thisLambda, 8000)
 round(exampleCIs, 6) # LB: 0.675142, UB: 0.711633
+round(exampleCIs * 8000) # suggests a 95% CI of 5401 to 5693 for the total count
+#  We can do better by, for example, replacing 1.96^2 with the appropriate
+#  distribution function in R. There are multiple ways to calculate the
+#  confidence interval for a Poisson process (i.e., a thing in nature that looks
+#  to us like a Poisson-type variable) because Poisson may be applied to
+#  different situations. We will use the exact method here, as opposed to, for
+#  example, the normal approximation method. This formulation relies on the
+#  relationship between the chi-square distribution and the Poisson
+#  distribution, as does the manual. There are also functions that have been
+#  created by multiple R developers to compute Poisson confidence intervals. You
+#  may want to look at the the poisson.test() function in base R and the
+#  survival and epitools packages. For pedagogical purposes, we create our own
+#  function here, for pedantic purposes there is a tangent in the addendum
+#  about Poisson confidence intervals. One important note is that the manual
+#  computes the confidence interval on lambda, which you will recall is the
+#  negative natural log of the proportion of valid partitions. That is part of
+#  the explanation for the square-root symbol and the powers in the calculation.
+#  For ease, we calculate the confidence interval on the (target molecule)
+#  count, so the result must be back-transformed to get the confidence interval
+#  for lambda.
+# 
+#  computeLambdaCI() is a function that takes a lambda-value and a desired
+#  confidence level and computes the confidence interval for a
+#  Poisson-distributed random variable
+computeLambdaCI <- function (count, conf.level=0.95) {
+  alpha <- 1 - conf.level
+  LB <- 0.5 * qchisq(alpha / 2, 2 * count)
+  UB <- 0.5 * qchisq(1 - alpha / 2, 2 * count + 2)
+  return(c(LB, UB))
+}
+computeLambdaCI(4000)
 
-#  We can do better by, for example, replacing 1.96^2 with the appriate
-#  distribution function in R, but this will suffice for now.
+#  let's try to match this up with the Poisson distribution function, which we
+#  read about earlier using ?dpois
+moleculeCount <- 0:10
+( countProbabilities <- dpois(moleculeCount, thisLambda) )
+plot(moleculeCount, countProbabilities, type="h", bty="l",
+     main=bquote(paste("Poisson density distribution for ",
+                       lambda, " = ", .(thisLambda))),
+     ylab="Molecule Count Probabilities", xlab="Count Per Partition")
+#  This plot shows the probability (y-axis) of find each count on the x-axis in
+#  one of the partitions. We can look at them like this
+round(countProbabilities, 3)
+#  This suggests that about half the time we will have 0 of the target molecule
+#  in a partition, about 35% of the time we will have 1, a little over 10% will
+#  have 2, about 2% will have 3, and a small fraction will have 4 or more. If we
+#  wanted to be more literal, we could multiply by our number of partitions to
+#  get the expected counts, as in
+round(8000 * countProbabilities)
+#  This is how QIAGEN is telling us to estimate the counts of the target
+#  molecule
+
 
 ##----  Absolute quantification - copies per ml ----
 #  The manual then provides the calculation for for the number of copies per
@@ -303,3 +353,122 @@ print(round(table4))
 ##---- References ----
 #  QIAGEN (2021) QIAcuity: Nanoplate Digital PCR.
 #     HB-2839-003_UM_QIAcuity_UM_Extension_0621_WW.pdf. www.qiagen.com
+
+##---- Addendum ----
+#  This is a tangent regarding Poisson confidence intervals, which is an
+#  interesting area of research.
+#  Here is how the survival package calculates an exact confidence interval for
+#  the Poisson distribution, leaving out some of their error prevention and
+#  other method goodness, k=number of successes, p=alpha
+#  type this into the console to see: survival::cipoisson
+#  and type this to read about it: ?survival::cipoisson
+survExactPoisCI <- function(k, p=.05) {
+  p <- p / 2
+  dummy1 <- ifelse(k == 0, 1, k)
+  lower <- ifelse(k == 0, 0, qgamma(p, dummy1))
+  upper <- qgamma(1 - p, k + 1)
+  return(c(lower, upper))
+}
+survExactPoisCI(4000)
+computeLambdaCI(thisLambda) == survExactPoisCI(thisLambda) # FALSE TRUE
+#  let's try the epitools package, ?epitools::pois.exact
+epitools::pois.exact(4000)
+#  from the exactci package
+eactci::poisson.exact(4000)
+eactci::exactpoissonPlot(4000)
+#  from McMaster University, "Exact" 95% Confidence Intervals
+#  https://ms.mcmaster.ca/peter/s743/poissonalpha.html
+#  last accessed March 14, 2023
+#  for each observation x, calculate the 95% CI for mu as follows
+x <- c(0:20, 4000)
+round(cbind( ( qchisq(0.025, 2*x)/2 ) , ( qchisq(0.975, 2*(x+1))/2 ) ), 3)
+
+xPrime <- 0:20
+mu <- 0:20
+#  The probability each interval will miss mu, if xPrime satisfies
+qchisq(0.975, 2 * (xPrime + 1)) / 2 < mu & mu < qchisq(0.975, 2*(xPrime + 2)) / 2
+poisExact <- function(mu) {
+  #  compute the interval
+  #  set everything below the minimum upper limit to 0
+  #  compute left tail probability of a Poisson distribution with mean mu
+  
+  # qchisq(0.975, 2 * (xPrime + 1)) / 2 < mu & mu < qchisq(0.975, 2*(xPrime + 2)) / 2
+}
+#  then the probability that the confidence interval will not go high enough is
+rightMiss <- ppois(xPrime, mu)
+#  or
+1 - pchisq(2 * mu, 2*(xPrime + 1))
+#  the probability the confidence intervel will miss on the left is 
+leftMiss <- 1 - ppois(xPrime - 1, mu)
+
+plot(x=mu,rightMiss, type="l")
+##!! Under construction, should produce plot ##!!
+
+#  Holladay (2014) reviews confidence intervals in a Master's thesis, including
+#  Wald, Garwood, and the Scores method, before proposing his own procedure.
+#  recreate his example here.
+holl.wald <- function(x) {
+  lx <- x - qnorm(.975) * sqrt(x)
+  ux <- x + qnorm(.975) * sqrt(x)
+  return(cbind(lx, ux))
+}
+round(holl.wald(18), 2) # 9.68 26.32
+#  Garwood
+holl.garwood <- function(x) {
+  lx <- .5 * qchisq(.025, 2*x)
+  ux <- .5 * qchisq(.975, 2*(1+x))
+  return(cbind(lx, ux))
+}
+round(holl.garwood(18), 2)
+#  Scores
+holl.scores <- function(x) {
+  lx <- x + .5 * qnorm(.975)^2 - qnorm(.975) * sqrt(x + .25 * qnorm(0.975)^2)
+  ux <- x + .5 * qnorm(.975)^2 + qnorm(.975) * sqrt(x + .25 * qnorm(.975)^2)
+  return(cbind(lx, ux))
+}
+round(holl.scores(18), 2)
+footTraffic <- data.frame(Day=1:14, Traffic=c(86, 96, 129, 146, 107, 138, 95,
+                                              90, 132, 149, 118, 143, 125, 100))
+mean(footTraffic$Traffic) * 14 # average foot traffic in 2-week period: 1654
+holl.wald(sum(footTraffic$Traffic))
+holl.garwood(sum(footTraffic$Traffic))
+holl.scores(sum(footTraffic$Traffic))
+#  these match, try them with the QIAcuity :registered: example
+holl.wald(4000)
+holl.garwood(4000)
+holl.scores(4000)
+#  this is a simplistic approximation of the confidence interval, that might be
+#  appropriate with large sample sizes
+thisLambda - 1.96 * sqrt(thisLambda / 8000)
+thisLambda + 1.96 * sqrt(thisLambda / 8000)
+
+## Here is an algorithm developed by Kabaila & Byrne (2001), directly excerpted
+#  from page 101
+
+# NEW ALGORITHM. Set ( ( 0 ) = 0.
+#       (a) For each positive integer s, C(s) is the largest solution for 0 of P { z - ~ ( 25) .Y 5
+#              s - I 10) = 1 - o. That there is at least one solution, and that there are at most two
+# solutions, for 0 of this equality follows from Lemma l(a) and the definition of r(.r).
+# (b) For each nonnegative integer .e, I / ( > ) is the largest solution for 0 of P{z 5 .'i 5 P +
+# p ( ) ~- 1 10) = 1 - (1. That there is at least one solution, and that there are at most two
+# solutions, for B of this equality follows from the definition of p ( z ) , the relation (1) and
+# Lemma l(a).
+# 
+# We now describe how e( c) and u(z) are computed. We compute r ( s ) by stepping through
+# s = 1 , 2 , . . until the relation (2) is satisfied. The left-hand side of (2) is easily calculated using
+# Lemma l(a). By Lemma l(a), thelargest solution for 0 of P{z - r(2) 5 S 5 P - 1 10) =
+# 1 - a lies in the interval r - l , x),a nd P { P- ~ ( r5 )S 5 s - 1 16) is a decreasing
+# function of 0 in this interval. Thus, having calculated ~ ( s )C,( z) is easily calculated using a
+# standard computer program for solving equations. A similar observation applies to ~ ( 2 )A.n SPLUS
+# function which carries out this computation is provided at the Web pages of the authors:
+# http://www.latrobe.edu.au/www/statistic/pvk.htm and http://w.bf. rrnit.edu.au/ - jbyrne/espci.htrn.
+
+
+#  Because we know it is related, let's look at the chi-square distribution,
+#  just for fun
+#  store a large random sample of chi-squre values, then plot it and add a curve
+x <- rchisq(10000, df = 8000)
+hist(x, breaks = 'Scott', freq = FALSE, xlab = '',
+     main = expression(paste(chi^2, "-distribution with 8000 degrees of freedom")))
+curve(dchisq(x, df=8000), from=7000, to=9000, n=5000,
+      col='yellow3', lwd=2, add=T)
