@@ -8,11 +8,42 @@
 #  HB-2839-003_UM_QIAcuity_UM_Extension_0621_WW first section Nanoplate Digital
 #  PCR contains subsection Statistics of nanoplate dPCR on page 7. This R file
 #  describes appropriate procedures for replicating all analyses contained
-#  therein in the R statistical environment. Note that you may want to run the
+#  therein with the R statistical environment. Note that you may want to run the
 #  function rm(list=ls()) to clear your environment prior to running this
 #  script. Be sure no valuable data is stored in your R environment first, maybe
 #  by running ls() and looking at the output, just to be safe.
+#
+#  This script develops several functions in a step-by-step way. The finished
+#  versions are included here for ease.
+#' \code{computeLambda()} is a function that takes the number of valid
+#' partitions and the numbe of positive partitions and returns lambda from the
+#' Poisson distribution
+computeLambda <- function(valid, positive, total=26000) {
+  #! add a warning if the proportion valid is too small
+  return(-log((valid - positive) / valid))
+}
 
+#' \code{computeLambdaCI()} is a function that takes a molecule count value 
+#' value and a desired confidence level and computes the confidence interval for
+#' a Poisson-distributed random variable
+computeLambdaCI <- function (count, conf.level=0.95) {
+  alpha <- 1 - conf.level
+  LB <- 0.5 * qchisq(alpha / 2, 2 * count)
+  UB <- 0.5 * qchisq(1 - alpha / 2, 2 * count + 2)
+  return(c(LB, UB))
+}
+
+
+computeVolume <- function(lambda, volume=.91, inputReactionVolume=F) {
+  #  if the user specified an inputReactionVolume, return it with the reaction
+  #  volume
+  if(inputReactionVolume) {
+    return(c((lambda / volume) * 1000,
+             (lambda / volume) * 1000) * inputReactionVolume)
+  }
+  #  if the user didn't specify an input volume, return just the reaction volume
+  return((lambda / volume) * 1000)
+}
 
 ##---- Poisson distribution ----
 #  The first portion of the manual describes the natural distribution of the
@@ -22,14 +53,14 @@
 #  distribution with lambda ranging from 0.1 to 5. The formula for Poisson
 #  is described and the following parameters are defined:
 # 
-#  e: Euler's constant, can be obtained with \code{exp(1)} in R
+#  e: Euler's constant, can be obtained with exp(1) in R
 #  Lambda: can be thought of as the concentration of the target molecule, or,
 #            the average count per microliter
 #  k: the copies of the molecule per partition
-#  k!: k factorial, obtained with \code{factorial(k)} in R
+#  k!: k factorial, obtained with factorial(k) in R
 #
 #  plots of the theoretical Poisson distribution are then presented, replicate
-#  these plots with the following code
+#  these plots with the following code.
 #
 #  investigate the help documentation for the poisson distribution family of
 #  functions
@@ -65,11 +96,11 @@ for(i in 1:5) {
           names.arg=0:10, main=bquote(lambda==.(myLambdas[i])))
   #  plot the left hand y-axis label and the bottom x-axis label as the first
   #  and third plots come up. check par(xpd), it will change your device
-  #  clipping area, ie., where R stops drawing on your plot.
+  #  clipping area, i.e., where R stops drawing on your plot.
   if(i == 1) {
     par(xpd=NA) # clip to the device region
     text(-5, .3, labels="Probability P(X=k)", srt=90, adj=0, xpd=NA)
-    par(xpd=F) # reset to clip to plot regoion
+    par(xpd=F) # reset to clip to plot region
   }
   if(i == 3) {
     par(xpd=NA)
@@ -80,8 +111,8 @@ for(i in 1:5) {
 options(OutDec=".") ## set the decimal back to a period
 ##!! could lighten the blue and the grey
 #  This plot shows the theoretical Poisson distribution with five different
-#  lambda values. Note that as lambda increases, the distribution of the counts
-#  becomes increasingly normal.
+#  lambda values. Note that as lambda increases, the the counts become
+#  increasingly normally distributed.
 # 
 #  The last paragraph of this section describes the calculation of copies per
 #  partition, which is:
@@ -93,7 +124,7 @@ options(OutDec=".") ## set the decimal back to a period
 
 
 ##----  Absolute quantification - copies per partition ----
-#  this section of the manual describes how to calculate lambda, the average
+#  This section of the manual describes how to calculate lambda, the average
 #  count of the target molecule in the well, based on empirical data. The
 #  calculation is:
 #
@@ -137,9 +168,7 @@ validPartitions * thisLambda # 5545.177
 # 
 #  The writers of this manual have used a different form of the Poisson
 #  distribution to express the confidence interval than they used to express
-#  lambda in the previous section. As of this writing, the Poisson distribution
-#  entry for Wikipedia parameterizes the distribution this way for the
-#  confidence interval as well:
+#  lambda in the previous section:
 #
 #  (1/2)*chiSquare(alpha/2, 2*k) ≤ Mu ≤ (1/2)*chiSquare(1 - (alpha/2), 2*k + 2)
 #
@@ -149,7 +178,7 @@ validPartitions * thisLambda # 5545.177
 #  estimate of lambda (the average number of copies per partition) plus or minus
 #  our estimate of the amount of variability in lambda based on what we know
 #  about the theoretical distribution with this many degrees of freedom, in this
-#  case 8000. Do not worry about degrees of freedom right now.
+#  case 8000. Do not worry about degrees of freedom right now \U+1F9D8.
 #  
 #  The manual provides the following calculations for their example
 lambdaLow <- 0.693 + ((1.96^2) / (2 * 8000)) -
@@ -168,7 +197,7 @@ lambdaHigh.2 <- exampleLambda + ((1.96^2) / (2 * validPartitions)) +
 testLambdas <- c(lambdaLow == lambdaLow.2, lambdaHigh == lambdaHigh.2)
 all(testLambdas) # TRUE
 
-#  to make that more readable, break it into smaller parts and give names
+#  to make that more readable, break it into smaller parts and give each a name
 chiSquareFor95CI <- (1.96^2)
 degreesOfFreedom <- (2 * validPartitions)
 constantToAddToMean <- (chiSquareFor95CI / degreesOfFreedom)
@@ -186,7 +215,7 @@ all(testLambdas)
 lambdaLow.4 <- thisLambda + constantToAddToMean - errorEstimate
 lambdaHigh.4 <- thisLambda + constantToAddToMean + errorEstimate
 
-#  To make this code reusable, we should write a function.
+#  We can write this into a function this way
 computeLambdaCI <- function(lambda, valid) {
   lowerBound <- lambda + ((1.96^2) / (2 * valid)) -
     sqrt(lambda * ((1.96^2) / valid) + ((1.96^4) / (4 * valid^2)))
@@ -217,8 +246,8 @@ round(exampleCIs * 8000) # suggests a 95% CI of 5401 to 5693 for the total count
 #  count, so the result must be back-transformed to get the confidence interval
 #  for lambda.
 # 
-#  computeLambdaCI() is a function that takes a lambda-value and a desired
-#  confidence level and computes the confidence interval for a
+#  computeLambdaCI() is a function that takes a molecule count value and a
+#  desired confidence level and computes the confidence interval for a
 #  Poisson-distributed random variable
 computeLambdaCI <- function (count, conf.level=0.95) {
   alpha <- 1 - conf.level
@@ -256,7 +285,7 @@ round(8000 * countProbabilities)
 #  lambda_volume = lambda / volume in microliters
 # 
 #  The manual extends the example to the copies per ml calculation with
-#  lambda as calculated previously, a volume of .34 nl
+#  lambda as calculated previously, a volume of .34 nl is used for the 8k plate
 V <- 0.34
 ( exampleCopiesPerML <- thisLambda / V * 1000 ) # 2038.668
 #  The manual truncates this value without reporting it. Round will not work
@@ -267,7 +296,7 @@ floor(exampleCopiesPerML) # 2038
 
 #  write this into a function for reusability
 computeVolume <- function(lambda, volume) {
-  return((lambda/volume) * 1000)
+  return((lambda / volume) * 1000)
 }
 
 #  Next, the manual demonstrates how to calculate the copies of the target
@@ -276,16 +305,17 @@ inputReactionVolume <- 12
 ( copiesInReaction <- computeVolume(thisLambda, V) * inputReactionVolume )
 
 #  Let's amend our \code{computeVolume()} function to calculated the input
-#  reaction volume if needed.
-computeVolume <- function(lambda, volume, inputReactionVolume=F) {
+#  reaction volume if needed. Also, we'll start with a default volume of 
+#  .91, which is what the 26000 nanoplate uses
+computeVolume <- function(lambda, volume=.91, inputReactionVolume=F) {
   #  if the user specified an inputReactionVolume, return it with the reaction
   #  volume
   if(inputReactionVolume) {
-    return(c((lambda/volume) * 1000,
-             (lambda/volume) * 1000) * inputReactionVolume)
+    return(c((lambda / volume) * 1000,
+             (lambda / volume) * 1000) * inputReactionVolume)
   }
   #  if the user didn't specify an input volume, return just the reaction volume
-  return((lambda/volume) * 1000)
+  return((lambda / volume) * 1000)
 }
 computeVolume(thisLambda, V, inputReactionVolume) # 2038 24456
 
@@ -344,6 +374,10 @@ print(round(table3))
 table4 <- table2 * 26000
 print(round(table4))
 
+#  Write a function to plot the distribution of counts
+plot.lambda <- function() {
+  
+}
 
 ##---- Conclusion ----
 ## This concludes our replication the QIAcuity User Manual Extension document.
@@ -369,30 +403,44 @@ survExactPoisCI <- function(k, p=.05) {
   upper <- qgamma(1 - p, k + 1)
   return(c(lower, upper))
 }
-survExactPoisCI(4000)
+survExactPoisCI(computeLambda(8000, 4000))
 computeLambdaCI(thisLambda) == survExactPoisCI(thisLambda) # FALSE TRUE
 #  let's try the epitools package, ?epitools::pois.exact
 epitools::pois.exact(4000)
 #  from the exactci package
-eactci::poisson.exact(4000)
-eactci::exactpoissonPlot(4000)
+exactci::poisson.exact(4000)
+exactci::exactpoissonPlot(4000)
+
 #  from McMaster University, "Exact" 95% Confidence Intervals
 #  https://ms.mcmaster.ca/peter/s743/poissonalpha.html
 #  last accessed March 14, 2023
+#! This is an interesting visualization of Poisson confidence intervals,
+#  but I have not been able to reproduce it yet, work in progress below !#
 #  for each observation x, calculate the 95% CI for mu as follows
-x <- c(0:20, 4000)
-round(cbind( ( qchisq(0.025, 2*x)/2 ) , ( qchisq(0.975, 2*(x+1))/2 ) ), 3)
-
-xPrime <- 0:20
-mu <- 0:20
+x <- seq(0, 20, .01)
+round(cbind(( qchisq(0.025, 2 * x) / 2 ),
+            ( qchisq(0.975, 2 * (x + 1)) / 2 ) ), 4)
+xPrime <- x - 1
+mu <- seq(0, 20, .01)
 #  The probability each interval will miss mu, if xPrime satisfies
-qchisq(0.975, 2 * (xPrime + 1)) / 2 < mu & mu < qchisq(0.975, 2*(xPrime + 2)) / 2
-poisExact <- function(mu) {
+thisLeftMiss <- matrix(ncol=length(mu))
+rightMiss <- vector()
+for(i in seq_along(xPrime)) {
+  print(qchisq(0.975, 2 * (xPrime[i - 1] + 1)) / 2 < mu[i] &
+                              mu[i] < qchisq(0.975, 2 * (xPrime[i] + 2)) / 2)
+  thisLeftMiss[, i] <- ppois(xPrime - 1, mu[i])
+} #! all FALSE
+#  can be computed as 
+plot(mu, ppois(xPrime - 1, mu), type="l", col="red", bty="l", ylab="alpha")
+lines(mu, 1 - ppois(xPrime-1, mu), type="l", col="green")
+abline(h=c(.025, .05), col="lightblue")
+  poisExact <- function(mu) {
   #  compute the interval
   #  set everything below the minimum upper limit to 0
   #  compute left tail probability of a Poisson distribution with mean mu
   
-  # qchisq(0.975, 2 * (xPrime + 1)) / 2 < mu & mu < qchisq(0.975, 2*(xPrime + 2)) / 2
+  # qchisq(0.975, 2 * (xPrime + 1)) / 2 < mu &
+  #      mu < qchisq(0.975, 2*(xPrime + 2)) / 2
 }
 #  then the probability that the confidence interval will not go high enough is
 rightMiss <- ppois(xPrime, mu)
@@ -469,6 +517,8 @@ thisLambda + 1.96 * sqrt(thisLambda / 8000)
 #  store a large random sample of chi-squre values, then plot it and add a curve
 x <- rchisq(10000, df = 8000)
 hist(x, breaks = 'Scott', freq = FALSE, xlab = '',
-     main = expression(paste(chi^2, "-distribution with 8000 degrees of freedom")))
+     main = expression(paste(chi^2,
+                             "-distribution with 8000 degrees of freedom")))
 curve(dchisq(x, df=8000), from=7000, to=9000, n=5000,
       col='yellow3', lwd=2, add=T)
+
