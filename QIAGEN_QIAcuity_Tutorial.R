@@ -414,18 +414,24 @@ exactci::exactpoissonPlot(4000)
 #  from McMaster University, "Exact" 95% Confidence Intervals
 #  https://ms.mcmaster.ca/peter/s743/poissonalpha.html
 #  last accessed March 14, 2023
-#  for each observation x, calculate the 95% CI for mu as follows
+#  This is an interesting visualization of exact 95% confidence intervals for
+#  the Poisson distribution, and a comparison to Pearson confidence intervals
+#  For each observation x, calculate the 95% CI for mu as follows
 x <- seq(0, 20, .1)
 mu <- seq(0, 20, .1)
 round(cbind(( qchisq(0.025, 2 * x) / 2 ),
             ( qchisq(0.975, 2 * (x + 1)) / 2 ) ), 4)
 #  The probability each interval will miss mu, if xPrime satisfies
-cbind( qchisq(0.975, 2 * (xPrime + 1)) / 2,
-      ( qchisq(0.975, 2 * (xPrime + 2)) / 2),
+#    qchisq(0.975, 2*(x'+1))/2 < µ < qchisq(0.975, 2*(x'+2))/2
+#  which is
+cbind( qchisq(0.975, 2 * (x + 1)) / 2,
+      ( qchisq(0.975, 2 * (x + 2)) / 2),
       mu)
 #  then the probability of a miss on the right is the Poisson probability that
 #  x <= x`
 #  for the lower limit, if xPrime satisfies
+#    qchisq(0.025, 2*(x'-1))/2 < µ < qchisq(0.025, 2*x')/2
+#  which is
 round(cbind( qchisq(0.025, 2 * (xPrime - 1)) / 2,
              qchisq(0.025, 2 * xPrime) / 2
              , mu), 4)
@@ -434,13 +440,13 @@ round(cbind( qchisq(0.025, 2 * (xPrime - 1)) / 2,
 #  to calculate these, use
 xPrime.right <- qpois(0.025, mu, F)
 xPrime.left <- qpois(0.975, mu, F)
-rightMiss <- ppois(xPrime.right, mu, F)
-leftMiss <- 1 - ppois(xPrime.left - 1, mu, F)
-totMiss <- rightMiss + leftMiss
+leftMiss <- ppois(xPrime.right, mu, F)
+rightMiss <- 1 - ppois(xPrime.left - 1, mu, F)
+totalMiss <- rightMiss + leftMiss
 plot(mu, rightMiss, type="l", col="blue", bty="l", ylab=expression(alpha),
      xlab=expression(mu), ylim=c(0, .05))
 lines(mu, leftMiss, type="l", col="red")
-lines(mu, totMiss, col="springgreen3")
+lines(mu, totalMiss, col="green4")
 abline(h=c(.025, .05), col="deepskyblue")
 #  reproduce with mu up to 60
 mu <- seq(0, 60, .1)
@@ -452,8 +458,27 @@ totMiss <- rightMiss + leftMiss
 plot(mu, rightMiss, type="l", col="red", bty="l", ylab="alpha",
      ylim=c(0, .05))
 lines(mu, leftMiss, type="l", col="blue")
-lines(mu, totMiss, col="darkgreen")
+lines(mu, totMiss, col="green4")
 abline(h=c(.025, .05), col="lightblue")
+#  Now try with Pearson confidence intervals
+#  The Pearson confidence limits are the roots of the quadratic equation
+#    ( (x - mu)^2) / mu = a
+#  which can shown to be
+#    (x + a / 2 ) + or - sqrt(a)*sqrt(x + a/4)
+#  where a = qchisq(.95, 1)
+##! This isn't correct ##!
+a <- qchisq(.95, 1)
+round(cbind((x + a / 2 ) - sqrt(a) * sqrt(x + a / 4),
+            (x + a / 2 ) + sqrt(a) * sqrt(x + a / 4)), 4)
+xPrime.left <- qchisq(.975, mu)
+xPrime.right <- qchisq(.025, mu)
+rightMiss <- ppois(xPrime.left, mu, F)
+leftMiss <- 1 - ppois(xPrime.right - 1, mu, F)
+totalMiss <- rightMiss + leftMiss
+plot(leftMiss, type="l", col="red", bty="l", ylim=c(0, .05))
+lines(rightMiss, col="blue")
+lines(totalMiss, col="green4")
+abline(h=c(.025, .05), col="deepskyblue")
 
 #  Holladay (2014) reviews confidence intervals in a Master's thesis, including
 #  Wald, Garwood, and the Scores method, before proposing his own procedure.
@@ -492,27 +517,6 @@ holl.scores(4000)
 #  appropriate with large sample sizes
 thisLambda - 1.96 * sqrt(thisLambda / 8000)
 thisLambda + 1.96 * sqrt(thisLambda / 8000)
-
-## Here is an algorithm developed by Kabaila & Byrne (2001), directly excerpted
-#  from page 101
-
-# NEW ALGORITHM. Set ( ( 0 ) = 0.
-#       (a) For each positive integer s, C(s) is the largest solution for 0 of P { z - ~ ( 25) .Y 5
-#              s - I 10) = 1 - o. That there is at least one solution, and that there are at most two
-# solutions, for 0 of this equality follows from Lemma l(a) and the definition of r(.r).
-# (b) For each nonnegative integer .e, I / ( > ) is the largest solution for 0 of P{z 5 .'i 5 P +
-# p ( ) ~- 1 10) = 1 - (1. That there is at least one solution, and that there are at most two
-# solutions, for B of this equality follows from the definition of p ( z ) , the relation (1) and
-# Lemma l(a).
-# 
-# We now describe how e( c) and u(z) are computed. We compute r ( s ) by stepping through
-# s = 1 , 2 , . . until the relation (2) is satisfied. The left-hand side of (2) is easily calculated using
-# Lemma l(a). By Lemma l(a), thelargest solution for 0 of P{z - r(2) 5 S 5 P - 1 10) =
-# 1 - a lies in the interval r - l , x),a nd P { P- ~ ( r5 )S 5 s - 1 16) is a decreasing
-# function of 0 in this interval. Thus, having calculated ~ ( s )C,( z) is easily calculated using a
-# standard computer program for solving equations. A similar observation applies to ~ ( 2 )A.n SPLUS
-# function which carries out this computation is provided at the Web pages of the authors:
-# http://www.latrobe.edu.au/www/statistic/pvk.htm and http://w.bf. rrnit.edu.au/ - jbyrne/espci.htrn.
 
 
 #  Because we know it is related, let's look at the chi-square distribution,
