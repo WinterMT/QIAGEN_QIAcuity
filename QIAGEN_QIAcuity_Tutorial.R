@@ -414,43 +414,46 @@ exactci::exactpoissonPlot(4000)
 #  from McMaster University, "Exact" 95% Confidence Intervals
 #  https://ms.mcmaster.ca/peter/s743/poissonalpha.html
 #  last accessed March 14, 2023
-#! This is an interesting visualization of Poisson confidence intervals,
-#  but I have not been able to reproduce it yet, work in progress below !#
 #  for each observation x, calculate the 95% CI for mu as follows
-x <- seq(0, 20, .01)
+x <- seq(0, 20, .1)
+mu <- seq(0, 20, .1)
 round(cbind(( qchisq(0.025, 2 * x) / 2 ),
             ( qchisq(0.975, 2 * (x + 1)) / 2 ) ), 4)
-xPrime <- x - 1
-mu <- seq(0, 20, .01)
 #  The probability each interval will miss mu, if xPrime satisfies
-thisLeftMiss <- matrix(ncol=length(mu))
-rightMiss <- vector()
-for(i in seq_along(xPrime)) {
-  print(qchisq(0.975, 2 * (xPrime[i - 1] + 1)) / 2 < mu[i] &
-                              mu[i] < qchisq(0.975, 2 * (xPrime[i] + 2)) / 2)
-  thisLeftMiss[, i] <- ppois(xPrime - 1, mu[i])
-} #! all FALSE
-#  can be computed as 
-plot(mu, ppois(xPrime - 1, mu), type="l", col="red", bty="l", ylab="alpha")
-lines(mu, 1 - ppois(xPrime-1, mu), type="l", col="green")
+cbind( qchisq(0.975, 2 * (xPrime + 1)) / 2,
+      ( qchisq(0.975, 2 * (xPrime + 2)) / 2),
+      mu)
+#  then the probability of a miss on the right is the Poisson probability that
+#  x <= x`
+#  for the lower limit, if xPrime satisfies
+round(cbind( qchisq(0.025, 2 * (xPrime - 1)) / 2,
+             qchisq(0.025, 2 * xPrime) / 2
+             , mu), 4)
+#  then the probability the confidence interval will miss on the left is the
+#  Poisson probability x >= x`
+#  to calculate these, use
+xPrime.right <- qpois(0.025, mu, F)
+xPrime.left <- qpois(0.975, mu, F)
+rightMiss <- ppois(xPrime.right, mu, F)
+leftMiss <- 1 - ppois(xPrime.left - 1, mu, F)
+totMiss <- rightMiss + leftMiss
+plot(mu, rightMiss, type="l", col="blue", bty="l", ylab=expression(alpha),
+     xlab=expression(mu), ylim=c(0, .05))
+lines(mu, leftMiss, type="l", col="red")
+lines(mu, totMiss, col="springgreen3")
+abline(h=c(.025, .05), col="deepskyblue")
+#  reproduce with mu up to 60
+mu <- seq(0, 60, .1)
+xPrime.right <- qpois(0.025, mu, F)
+xPrime.left <- qpois(0.975, mu, F)
+rightMiss <- ppois(xPrime.right, mu, F)
+leftMiss <- 1 - ppois(xPrime.left - 1, mu, F)
+totMiss <- rightMiss + leftMiss
+plot(mu, rightMiss, type="l", col="red", bty="l", ylab="alpha",
+     ylim=c(0, .05))
+lines(mu, leftMiss, type="l", col="blue")
+lines(mu, totMiss, col="darkgreen")
 abline(h=c(.025, .05), col="lightblue")
-  poisExact <- function(mu) {
-  #  compute the interval
-  #  set everything below the minimum upper limit to 0
-  #  compute left tail probability of a Poisson distribution with mean mu
-  
-  # qchisq(0.975, 2 * (xPrime + 1)) / 2 < mu &
-  #      mu < qchisq(0.975, 2*(xPrime + 2)) / 2
-}
-#  then the probability that the confidence interval will not go high enough is
-rightMiss <- ppois(xPrime, mu)
-#  or
-1 - pchisq(2 * mu, 2*(xPrime + 1))
-#  the probability the confidence intervel will miss on the left is 
-leftMiss <- 1 - ppois(xPrime - 1, mu)
-
-plot(x=mu,rightMiss, type="l")
-##!! Under construction, should produce plot ##!!
 
 #  Holladay (2014) reviews confidence intervals in a Master's thesis, including
 #  Wald, Garwood, and the Scores method, before proposing his own procedure.
@@ -522,3 +525,4 @@ hist(x, breaks = 'Scott', freq = FALSE, xlab = '',
 curve(dchisq(x, df=8000), from=7000, to=9000, n=5000,
       col='yellow3', lwd=2, add=T)
 
+x <- rpois(1000, mu[1])
