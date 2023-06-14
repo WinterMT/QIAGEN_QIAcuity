@@ -14,12 +14,14 @@
 #  by running ls() and looking at the output, just to be safe.
 #
 #  This script develops several functions in a step-by-step way. The finished
-#  versions are included here for ease.
+#  versions are included here for convenience
 #' \code{computeLambda()} is a function that takes the number of valid
-#' partitions and the numbe of positive partitions and returns lambda from the
+#' partitions and the number of positive partitions and returns lambda from the
 #' Poisson distribution
 computeLambda <- function(valid, positive, total=26000) {
-  #! add a warning if the proportion valid is too small
+  if(valid/total < .5) {
+    warning("Less than half of your partitions are valid, is something amiss?")
+  }
   return(-log((valid - positive) / valid))
 }
 
@@ -240,11 +242,12 @@ round(exampleCIs * 8000) # suggests a 95% CI of 5401 to 5693 for the total count
 #  function here, for pedantic purposes there is a tangent in the addendum
 #  about Poisson confidence intervals. One important note is that the manual
 #  computes the confidence interval on lambda, which you will recall is the
-#  negative natural log of the proportion of valid partitions. That is part of
-#  the explanation for the square-root symbol and the powers in the calculation.
-#  For ease, we calculate the confidence interval on the (target molecule)
-#  count, so the result must be back-transformed to get the confidence interval
-#  for lambda.
+#  negative natural log of the proportion of negative partitions. That is part
+#  of the explanation for the square-root symbol and the powers in the 
+#  calculation. For ease, we calculate the confidence interval on the (target 
+#  molecule) count, so the result must be back-transformed to get the confidence 
+#  interval for lambda.
+#  
 # 
 #  computeLambdaCI() is a function that takes a molecule count value and a
 #  desired confidence level and computes the confidence interval for a
@@ -391,6 +394,11 @@ plot.lambda <- function() {
 ##---- Addendum ----
 #  This is a tangent regarding Poisson confidence intervals, which is an
 #  interesting area of research.
+#  Here is a simplistic approximation of the confidence interval that might be
+#  appropriate with large sample sizes
+thisLambda - 1.96 * sqrt(thisLambda / 8000)
+thisLambda + 1.96 * sqrt(thisLambda / 8000)
+
 #  Here is how the survival package calculates an exact confidence interval for
 #  the Poisson distribution, leaving out some of their error prevention and
 #  other method goodness, k=number of successes, p=alpha
@@ -433,8 +441,7 @@ cbind( qchisq(0.975, 2 * (x + 1)) / 2,
 #    qchisq(0.025, 2*(x'-1))/2 < µ < qchisq(0.025, 2*x')/2
 #  which is
 round(cbind( qchisq(0.025, 2 * (xPrime - 1)) / 2,
-             qchisq(0.025, 2 * xPrime) / 2
-             , mu), 4)
+             qchisq(0.025, 2 * xPrime) / 2, mu), 4)
 #  then the probability the confidence interval will miss on the left is the
 #  Poisson probability x >= x`
 #  to calculate these, use
@@ -513,20 +520,16 @@ holl.scores(sum(footTraffic$Traffic))
 holl.wald(4000)
 holl.garwood(4000)
 holl.scores(4000)
-#  this is a simplistic approximation of the confidence interval, that might be
-#  appropriate with large sample sizes
-thisLambda - 1.96 * sqrt(thisLambda / 8000)
-thisLambda + 1.96 * sqrt(thisLambda / 8000)
 
 
 #  Because we know it is related, let's look at the chi-square distribution,
 #  just for fun
 #  store a large random sample of chi-squre values, then plot it and add a curve
-x <- rchisq(10000, df = 8000)
+x <- rchisq(10000, df = 4000)
 hist(x, breaks = 'Scott', freq = FALSE, xlab = '',
      main = expression(paste(chi^2,
                              "-distribution with 8000 degrees of freedom")))
-curve(dchisq(x, df=8000), from=7000, to=9000, n=5000,
-      col='yellow3', lwd=2, add=T)
+curve(dchisq(x, df=4000), from=3000, to=5000, n=10000,
+      col='yellow2', lwd=2, add=T)
 
 x <- rpois(1000, mu[1])
